@@ -1,0 +1,22 @@
+# Ignore build output
+target/
+
+# Ignore compiled files
+*.class
+
+# Logs
+*.log
+
+# IDE files
+.idea/
+*.iml
+
+# Environment files
+.env
+
+# OS files
+.DS_Store
+
+# Ignore all JARs except those in target
+*.jar
+!target/*.jar
