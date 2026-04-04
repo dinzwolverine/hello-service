@@ -1,0 +1,253 @@
+    1  ls
+    2  cd hello-service/
+    3  ls 
+    4  vi Dockerfile 
+    5  docker --version
+    6  docker build -t hello-services:1.0.0 .
+    7  ssh -i "my-key.pem" ubuntu@ec2-43-204-38-233.ap-south-1.compute.amazonaws.com
+    8  systemctl restart service jenkins
+    9  clear
+   10  sudo systemctl restart jenkins
+   11  systemctl list-units --type=service | grep -i jenkins
+   12  dpkg -l | grep jenkins
+   13  sudo dpkg -i jenkins_2.479.3_all.deb
+   14  sudo apt -f install -y
+   15  sudo systemctl daemon-reload
+   16  sudo systemctl start jenkins
+   17  ls /lib/systemd/system/jenkins.service
+   18  sudo root
+   19  su -
+   20  su root
+   21  sudo service jenkins restart
+   22  sudo -i
+   23  lll
+   24  ll
+   25  ssh -i "my-key.pem" ubuntu@ec2-43-204-38-233.ap-south-1.compute.amazonaws.com
+   26  exit
+   27  ll
+   28  aws sts get-caller-identity
+   29  export AWS_REGION=us-east-1
+   30  export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+   31  export ECR_REPO_NAME=hello-service
+   32  aws ecr create-repository   --repository-name $ECR_REPO_NAME   --region $AWS_REGION   --image-scanning-configuration scanOnPush=true   --encryption-configuration encryptionType=AES256
+   33  export ECR_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME
+   34  echo "ECR URI: $ECR_URI"
+   35  aws ecr get-login-password --region $AWS_REGION |   docker login --username AWS --password-stdin $ECR_URI
+   36  docker tag hello-service:1.0.0 $ECR_URI:1.0.0
+   37  docker tag hello-service:1.0.0 $ECR_URI:latest
+   38  docker push $ECR_URI:1.0.0
+   39  docker push $ECR_URI:latest
+   40  aws ecr list-images --repository-name $ECR_REPO_NAME --region $AWS_REGION
+   41  aws ecr put-lifecycle-policy   --repository-name $ECR_REPO_NAME   --lifecycle-policy-text file://lifecycle-policy.json
+   42  ll
+   43  cd hello-service/
+   44  ll
+   45  aws ecr put-lifecycle-policy   --repository-name $ECR_REPO_NAME   --lifecycle-policy-text file://lifecycle-policy.json
+   46  clear
+   47  aws ecs create-cluster   --cluster-name hello-cluster   --capacity-providers FARGATE   --region $AWS_REGION
+   48  aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
+   49  echo $AWS_REGION
+   50  export AWS_REGION="us-east-1"
+   51  aws ecs create-cluster   --cluster-name hello-cluster   --capacity-providers FARGATE   --region $AWS_REGION
+   52  aws iam get-role --role-name AWSServiceRoleForECS
+   53  clear
+   54  aws ecs describe-clusters --clusters hello-cluster --region $AWS_REGION
+   55  vi task-definition.json
+   56  aws logs create-log-group --log-group-name /ecs/hello-service --region $AWS_REGION
+   57  aws ecs register-task-definition   --cli-input-json file://task-definition.json   --region $AWS_REGION
+   58  [200~cat <<EOF > ecs-trust-policy.json
+   59  {
+   60    "Version": "2012-10-17",
+   61    "Statement": [
+   62      {
+   63        "Effect": "Allow",
+   64        "Principal": {
+   65          "Service": "ecs-tasks.amazonaws.com"
+   66        },
+   67        "Action": "sts:AssumeRole"
+   68      }
+   69    ]
+   70  }
+   71  clear
+   72  cat <<EOF > ecs-trust-policy.json
+   73  {
+   74    "Version": "2012-10-17",
+   75    "Statement": [
+   76      {
+   77        "Effect": "Allow",
+   78        "Principal": {
+   79          "Service": "ecs-tasks.amazonaws.com"
+   80        },
+   81        "Action": "sts:AssumeRole"
+   82      }
+   83    ]
+   84  }
+   85  EOF
+   86  aws iam create-role   --role-name ecsTaskExecutionRole   --assume-role-policy-document file://ecs-trust-policy.json
+   87  aws sts get-caller-identity --query Account --output text
+   88  vi task-definition.json 
+   89  aws ecs register-task-definition   --cli-input-json file://task-definition.json   --region $AWS_REGION
+   90  vi task-definition.json 
+   91  aws ecs register-task-definition   --cli-input-json file://task-definition.json   --region $AWS_REGION
+   92  clear
+   93  export VPC_ID=$(aws ec2 describe-vpcs --filters 'Name=isDefault,Values=true' \
+   94    --query 'Vpcs[0].VpcId' --output text --region $AWS_REGIexport VPC_ID=$(aws ec2 describe-vpcs --filters 'Name=isDefault,Values=true' \
+   95    --query 'Vpcs[0].VpcId' --output text --region $AWS_REGION)
+   96  export VPC_ID=$(aws ec2 describe-vpcs --filters 'Name=isDefault,Values=true' \
+   97    --query 'Vpcs[0].VpcId' --output text --region $AWS_REGION)
+   98  clellcccccccccexport VPC_ID=$(aws ec2 describe-vpcs --filters 'Name=isDefault,Values=true' \
+   99    --query 'Vpcs[0].VpcId' --output text --region $AWS_REGION)
+  100  c
+  101  clear
+  102  aws iam attach-role-policy   --role-name ecsTaskExecutionRole   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy   --region us-east-1
+  103  aws ecs update-service   --cluster hello-cluster   --service hello-service   --force-new-deployment   --region us-east-1
+  104  cleacleac
+  105  clear
+  106  aws ecs describe-services   --cluster hello-cluster   --services hello-service   --query 'services[0].deployments'   --region us-east-1
+  107  lear
+  108  clear
+  109  aws ecs describe-services --cluster hello-cluster --services hello-service
+  110  cllearclear
+  111  ccclearexit
+  112  exit
+  113  clear
+  114  aws ecs describe-services   --cluster hello-cluster   --services hello-service   --query 'services[0].{Status:status, Desired:desiredCount, Running:runningCount, Pending:pendingCount}'   --output table   --region us-east-1
+  115  aws ecs list-tasks   --cluster hello-cluster   --service-name hello-service   --query 'taskArns[*]'   --output text   --region us-east-1
+  116  # 1. Store the first Task ARN from your list
+  117  TASK_ARN="arn:aws:ecs:us-east-1:971201280747:task/hello-cluster/034e95841dcf49759cb0052f571e8e8c"
+  118  # 2. Get the Network Interface ID (ENI) attached to this task
+  119  ENI_ID=$(aws ecs describe-tasks \
+  120    --cluster hello-cluster \
+  121    --tasks $TASK_ARN \
+  122    --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
+  123    --output text --region us-east-1)
+  124  # 3. Get the Public IP address of that ENI
+  125  aws ec2 describe-network-interfaces   --network-interface-ids $ENI_ID   --query 'NetworkInterfaces[0].Association.PublicIp'   --output text --region us-east-1
+  126  aws ec2 authorize-security-group-ingress   --group-id sg-xxxxxxxx   --protocol tcp   --port 80   --cidr 0.0.0.0/0   --region us-east-1
+  127  [200~aws ecs describe-services   --cluster hello-cluster   --services hello-service   --region us-east-1   --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups[0]'   --output text~
+  128  aws ecs describe-services   --cluster hello-cluster   --services hello-service   --region us-east-1   --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups[0]'   --output text
+  129  # Replace YOUR_SG_ID with the result from Step 1
+  130  aws ec2 authorize-security-group-ingress   --group-id sg-01cc03af2dc01387e   --protocol tcp   --port 80   --cidr 0.0.0.0/0   --region us-east-1
+  131  # 1. Get the Task ARN (the running container)
+  132  TASK_ARN=$(aws ecs list-tasks --cluster hello-cluster --service-name hello-service --query 'taskArns[0]' --output text --region us-east-1)
+  133  # 2. Get the Network Interface ID
+  134  ENI_ID=$(aws ecs describe-tasks --cluster hello-cluster --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text --region us-east-1)
+  135  # 3. Get the final Public IP
+  136  aws ec2 describe-network-interfaces --network-interface-ids $ENI_ID --query 'NetworkInterfaces[0].Association.PublicIp' --output text --region us-east-1
+  137  aws logs tail /ecs/hello-service --region us-east-1
+  138  aws ec2 authorize-security-group-ingress   --group-id sg-01cc03af2dc01387e   --protocol tcp   --port 8080   --cidr 0.0.0.0/0   --region us-east-1
+  139  # Get the latest Task ARN
+  140  TASK_ARN=$(aws ecs list-tasks --cluster hello-cluster --service-name hello-service --query 'taskArns[0]' --output text --region us-east-1)
+  141  # Get the Network Interface ID
+  142  ENI_ID=$(aws ecs describe-tasks --cluster hello-cluster --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text --region us-east-1)
+  143  # Get the Public IP
+  144  aws ec2 describe-network-interfaces --network-interface-ids $ENI_ID --query 'NetworkInterfaces[0].Association.PublicIp' --output text --region us-east-1
+  145  clear
+  146  ll
+  147  mkdir Test
+  148  cd Test/
+  149  git pull https://github.com/dinzwolverine/hello-service.git
+  150  git init
+  151  ls
+  152  clear
+  153  git clone https://github.com/dinzwolverine/hello-service.git
+  154  ll
+  155  cd hello-service/
+  156  ls
+  157  git add .
+  158  git commit -m "Test"
+  159  cd ..
+  160  cd hello-service/
+  161  ls
+  162  git add .
+  163  git commit -m "Added Configuration files"
+  164  git push origin main
+  165  git pull origin main --rebase
+  166  git push origin main
+  167  git pull origin main --rebase
+  168  git status
+  169  git rebase --continue
+  170  git pull origin main --rebase
+  171  git push origin main
+  172  git status
+  173  clear
+  174  aws ecs describe-services   --cluster hello-cluster   --services hello-service   --region us-east-1   --query 'services[0].{Service:serviceName, Status:status, Desired:desiredCount, Running:runningCount}'   --output table
+  175  aws ecs describe-tasks   --cluster hello-cluster   --region us-east-1   --tasks $(aws ecs list-tasks --cluster hello-cluster --service-name hello-service --query 'taskArns[*]' --output text --region us-east-1)   --query 'tasks[*].{TaskID:taskArn, LastStatus:lastStatus, DesiredStatus:desiredStatus, Health:healthStatus}'   --output table
+  176  # 1. Get the Task ARN (the running container)
+  177  TASK_ARN=$(aws ecs list-tasks --cluster hello-cluster --service-name hello-service --query 'taskArns[0]' --output text --region us-east-1)
+  178  # 2. Get the Network Interface ID (ENI)
+  179  ENI_ID=$(aws ecs describe-tasks --cluster hello-cluster --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text --region us-east-1)
+  180  # 3. Get the final Public IP
+  181  aws ec2 describe-network-interfaces --network-interface-ids $ENI_ID --query 'NetworkInterfaces[0].Association.PublicIp' --output text --region us-east-1
+  182  aws ecs update-service   --cluster hello-cluster   --service hello-service   --desired-count 0   --region us-east-1
+  183  cd ..
+  184  aws ecs delete-service   --cluster hello-cluster   --service hello-service   --region us-east-1aws ecs delete-service   --cluster hello-cluster   --service hello-service   --region us-east-1
+  185  aws ecs delete-service   --cluster hello-cluster   --service hello-service   --region us-east-1
+  186  lear
+  187  clear
+  188  aws ecs delete-cluster   --cluster hello-cluster   --region us-east-1
+  189  aws logs delete-log-group   --log-group-name /ecs/hello-service   --region us-east-1
+  190  aws logs delete-log-group   --log-group-name /ecs/hello-service   --region us-east-1
+  191  aws ecr delete-repository   --repository-name hello-service   --force   --region us-east-1
+  192  aws iam detach-role-policy --role-name ecsTaskExecutionRole --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  193  aws iam delete-role --role-name ecsTaskExecutionRole
+  194  aws ecs list-tasks --cluster hello-cluster --region us-east-1
+  195  # Remove Port 80
+  196  aws ec2 revoke-security-group-ingress   --group-id sg-01cc03af2dc01387e   --protocol tcp   --port 80   --cidr 0.0.0.0/0   --region us-east-1
+  197  # Remove Port 8080
+  198  aws ec2 revoke-security-group-ingress   --group-id sg-01cc03af2dc01387e   --protocol tcp   --port 8080   --cidr 0.0.0.0/0   --region us-east-1
+  199  aws ec2 delete-security-group   --group-id sg-01cc03af2dc01387e   --region us-east-1
+  200  aws ecs list-clusters --region us-east-1
+  201  aws ecs list-tasks --cluster hello-cluster --region us-east-1
+  202  aws ecs list-services --cluster hello-cluster --region us-east-1
+  203  ll
+  204  clear
+  205  aws ecr describe-repositories --repository-names hello-service --region us-east-1
+  206  aws logs describe-log-groups --log-group-name-prefix /ecs/hello-service --region us-east-1
+  207  aws ec2 describe-security-groups --group-ids sg-01cc03af2dc01387e --region us-east-1 --query 'SecurityGroups[0].IpPermissions'
+  208  aws iam get-role --role-name ecsTaskExecutionRole
+  209  clear
+  210  export VPC_ID=$(aws ec2 describe-vpcs --filters 'Name=isDefault,Values=true' \
+  211    --query 'Vpcs[0].VpcId' --output text --region $AWS_REGION)
+  212  export VPC_ID=$(aws ec2 describe-vpcs --filters 'Name=isDefault,Values=true' \
+  213    --query 'Vpcs[0].VpcId' --output text --region $AWS_REGION)
+  214  export AWS_REGION="us-east-1"
+  215  export VPC_ID=$(aws ec2 describe-vpcs --filters 'Name=isDefault,Values=true' \
+  216    --query 'Vpcs[0].VpcId' --output text --region $AWS_REGION)
+  217  # Verify it:
+  218  echo $VPC_ID
+  219  export SUBNET_IDS=$(aws ec2 describe-subnets \
+  220    --filters "Name=vpc-id,Values=$VPC_ID" \
+  221    --query 'Subnets[*].SubnetId' --output text --region $AWS_REGION | tr '\t' ',')
+  222  export SG_ID=$(aws ec2 create-security-group \
+  223    --group-name hello-service-sg \
+  224    --description 'Hello Service Security Group' \
+  225    --vpc-id $VPC_ID \
+  226    --query 'GroupId' --output text --region $AWS_REGION)
+  227  aws ec2 authorize-security-group-ingress   --group-id $SG_ID   --protocol tcp --port 8080 --cidr 0.0.0.0/0   --region $AWS_REGION
+  228  aws ecs create-service   --cluster hello-cluster   --service-name hello-service   --task-definition hello-service-task   --desired-count 1   --launch-type FARGATE   --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_IDS],securityGroups=[$SG_ID],assignPublicIp=ENABLED}"   --region $AWS_REGION
+  229  [200~aws ecs describe-services   --cluster hello-cluster   --services hello-service   --region $AWS_REGION
+  230  ~aws ecs describe-services   --cluster hello-cluster   --services hello-service   --region $AWS_REGION
+  231  aws ecs describe-services   --cluster hello-cluster   --services hello-service   --region $AWS_REGION
+  232  lear
+  233  clear
+  234  aws ecs describe-services   --cluster hello-cluster   --services hello-service   --region $AWS_REGION
+  235  aws ecs describe-services   --cluster hello-cluster   --services hello-service   --region $AWS_REGION
+  236  [200~aws iam attach-role-policy   --role-name ecsTaskExecutionRole   --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy \
+  237  clear
+  238  ll
+  239  cd mk mmmkkkaws ecs update-service   --cluster hello-cluster   --service hello-service   --desired-count 0   --region us-east-1
+  240  ll
+  241  cd hello-service/
+  242  clear
+  243  ls
+  244  rm read.me 
+  245  vi Jenkinsfile 
+  246  git add .
+  247  vi Jenkinsfile 
+  248  cat Jenkinsfile 
+  249  git add .
+  250  git commit -m "Testing Webhooks"
+  251  git push origin main
+  252  history
+  253  history > Commands.txt
