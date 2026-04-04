@@ -13,19 +13,24 @@ pipeline {
     stages {
         stage('Environment Audit') {
             steps {
-                echo "🔍 Verifying VM Tooling..."
+                echo "🔍 Checking VM Tooling..."
+                // These will fail if not installed, telling us exactly what's missing
+                sh 'java -version'
+                sh 'mvn -version'
                 sh 'aws --version'
                 sh 'docker --version'
-                sh 'java -version'
             }
         }
 
         stage('AWS Auth Check') {
             steps {
                 echo "🔐 Testing AWS IAM Connectivity..."
-                // This uses your 'AWS Credentials' type in Jenkins
-                withAWS(credentials: 'aws-credentials', region: env.AWS_REGION) {
-                    sh 'aws sts get-caller-identity'
+                // We extract the keys directly from your 'aws-credentials' secret
+                withCredentials([aws(credentialsId: 'aws-credentials', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh """
+                        export AWS_DEFAULT_REGION=${AWS_REGION}
+                        aws sts get-caller-identity
+                    """
                 }
             }
         }
@@ -40,10 +45,10 @@ pipeline {
 
     post {
         success {
-            echo "🏆 SYSTEM READY: AWS and Docker are fully functional!"
+            echo "🏆 SYSTEM READY, DINESH! AWS and Docker are fully functional."
         }
         failure {
-            echo "❌ STILL FAILING: Check Jenkins Console Output for the exact error."
+            echo "❌ STILL FAILING. Check the 'Environment Audit' stage logs."
         }
     }
 }
