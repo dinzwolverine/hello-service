@@ -2,16 +2,13 @@ pipeline {
     agent any
 
     environment {
-        // Updated to us-east-1 to match your active cluster
-        AWS_REGION = 'ap-south-1' 
+        AWS_REGION = 'us-east-1' 
         IMAGE_NAME = 'hello-service'
         IMAGE_TAG  = "${env.BUILD_NUMBER}"
     }
 
-    tools {
-        maven 'Maven-3.9'
-        jdk   'JDK-17'
-    }
+    // REMOVED the 'tools' block to avoid naming conflicts. 
+    // It will now use the Maven and JDK installed on your Linux VM.
 
     options {
         timeout(time: 30, unit: 'MINUTES')
@@ -21,38 +18,32 @@ pipeline {
     }
 
     stages {
-        // ── STAGE 1: Validation (Secrets Check) ──────────────
-        stage('Validate Secrets') {
+        stage('Validate Environment') {
             steps {
-                echo "🔍 Testing Jenkins Credentials..."
+                echo "🔍 Checking VM Tools..."
+                sh 'mvn -version'
+                sh 'java -version'
+                
                 withAWS(region: AWS_REGION, credentials: 'aws-credentials') {
-                    // This verifies your AWS Access/Secret keys work
                     sh 'aws sts get-caller-identity'
-                }
-                withCredentials([string(credentialsId: 'ecr-registry', variable: 'ECR_REPO')]) {
-                    // This verifies the 'ecr-registry' secret exists
-                    echo "✅ ECR Secret found: ${env.ECR_REPO.substring(0, 5)}***"
                 }
             }
         }
 
-        // ── STAGE 2: Checkout ─────────────────────────────
         stage('Checkout') {
             steps {
-                // Using scm variable ensures webhook triggers work correctly
                 checkout scm
             }
         }
 
-        // ── STAGE 3: Build & Package ───────────────────────
-        // Combined for faster validation during testing
         stage('Build & Package') {
             steps {
+                // Use absolute path if 'mvn' isn't in global PATH, 
+                // but usually just 'mvn' works on Ubuntu.
                 sh 'mvn clean package -DskipTests -B'
             }
         }
 
-        // ── STAGE 4: Docker Build & Push ───────────────────
         stage('Docker & ECR Push') {
             steps {
                 withCredentials([string(credentialsId: 'ecr-registry', variable: 'ECR_REPO')]) {
@@ -73,32 +64,17 @@ pipeline {
             }
         }
 
-        // ── STAGE 5: Deploy to ECS ───────────────────────
         stage('Deploy to ECS') {
-            when {
-                branch 'main'
-            }
+            when { branch 'main' }
             steps {
                 withAWS(region: AWS_REGION, credentials: 'aws-credentials') {
-                    sh """
-                        aws ecs update-service \
-                          --cluster hello-cluster \
-                          --service hello-service \
-                          --force-new-deployment \
-                          --region ${AWS_REGION}
-                    """
+                    sh "aws ecs update-service --cluster hello-cluster --service hello-service --force-new-deployment --region ${AWS_REGION}"
                 }
             }
         }
     }
 
     post {
-        success {
-            echo "✅ SUCCESS: Build #${env.BUILD_NUMBER}. Webhook and Credentials are verified!"
-        }
-        failure {
-            echo "❌ FAILED: Build #${env.BUILD_NUMBER}. Check 'Validate Secrets' stage logs."
-        }
         always {
             sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
             sh 'docker image prune -f'
