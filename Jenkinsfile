@@ -40,7 +40,7 @@ pipeline {
             post {
                 always {
                     // This creates the nice test graphs in Jenkins
-                    junit 'target/surefire-reports/*.xml'
+                    junit 'target/surefire-reports/*.xml' allowEmptyResults: true
                 }
             }
         }
