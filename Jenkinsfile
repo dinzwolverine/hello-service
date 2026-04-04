@@ -2,86 +2,61 @@ pipeline {
     agent any
 
     environment {
-    // Point this to your Java 17 installation path
-    JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
-    PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
-
-    AWS_REGION = 'us-east-1' 
-    IMAGE_NAME = 'hello-service'
-    IMAGE_TAG  = "${env.BUILD_NUMBER}"
+        AWS_REGION = 'us-east-1' 
     }
 
-    // REMOVED the 'tools' block to avoid naming conflicts. 
-    // It will now use the Maven and JDK installed on your Linux VM.
-
     options {
-        timeout(time: 30, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        disableConcurrentBuilds()
+        timeout(time: 5, unit: 'MINUTES')
         timestamps()
     }
 
     stages {
-        stage('Validate Environment') {
+        // ── STAGE 1: WEBHOOK & GITHUB VALIDATION ─────────────
+        stage('Validate Webhook') {
             steps {
-                echo "🔍 Checking VM Tools..."
-                sh 'mvn -version'
-                sh 'java -version'
-                
-                withAWS(region: AWS_REGION, credentials: 'aws-credentials') {
-                    sh 'aws sts get-caller-identity'
+                echo "✅ Webhook Triggered Successfully!"
+                echo "Build Number: ${env.BUILD_NUMBER}"
+                echo "Running on VM: ${env.NODE_NAME}"
+            }
+        }
+
+        // ── STAGE 2: AWS IAM CREDENTIALS VALIDATION ──────────
+        stage('Validate AWS Secrets') {
+            steps {
+                echo "🔐 Testing Jenkins AWS Credentials..."
+                // Using 'aws-credentials' ID from Jenkins Credentials Store
+                withCredentials([usernamePassword(credentialsId: 'aws-credentials', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                    sh """
+                        export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+                        export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+                        export AWS_DEFAULT_REGION=${AWS_REGION}
+                        
+                        echo "🛰️ Contacting AWS Security Token Service..."
+                        aws sts get-caller-identity
+                    """
                 }
             }
         }
 
-        stage('Checkout') {
+        // ── STAGE 3: LOCAL DOCKER VALIDATION ─────────────────
+        stage('Validate Docker Installation') {
             steps {
-                checkout scm
-            }
-        }
-
-        stage('Build & Package') {
-            steps {
-                // Use absolute path if 'mvn' isn't in global PATH, 
-                // but usually just 'mvn' works on Ubuntu.
-                sh 'mvn clean package -DskipTests -B'
-            }
-        }
-
-        stage('Docker & ECR Push') {
-            steps {
-                withCredentials([string(credentialsId: 'ecr-registry', variable: 'ECR_REPO')]) {
-                    withAWS(region: AWS_REGION, credentials: 'aws-credentials') {
-                        sh """
-                            aws ecr get-login-password --region ${AWS_REGION} | \
-                            docker login --username AWS --password-stdin ${env.ECR_REPO}
-
-                            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${env.ECR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
-                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${env.ECR_REPO}/${IMAGE_NAME}:latest
-
-                            docker push ${env.ECR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
-                            docker push ${env.ECR_REPO}/${IMAGE_NAME}:latest
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to ECS') {
-            when { branch 'main' }
-            steps {
-                withAWS(region: AWS_REGION, credentials: 'aws-credentials') {
-                    sh "aws ecs update-service --cluster hello-cluster --service hello-service --force-new-deployment --region ${AWS_REGION}"
-                }
+                echo "🐳 Testing Local Docker Permissions..."
+                // This ensures 'jenkins' user can run docker without 'sudo'
+                sh 'docker version'
+                sh 'docker info | grep "Containers"'
             }
         }
     }
 
     post {
-        always {
-            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
-            sh 'docker image prune -f'
+        success {
+            echo "------------------------------------------------"
+            echo "🏆 AUTHENTICATION & ENVIRONMENT VERIFIED!"
+            echo "------------------------------------------------"
+        }
+        failure {
+            echo "❌ VALIDATION FAILED. Check 'Manage Jenkins > Credentials' or Docker permissions."
         }
     }
 }
