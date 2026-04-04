@@ -2,9 +2,13 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1' 
-        IMAGE_NAME = 'hello-service'
-        IMAGE_TAG  = "${env.BUILD_NUMBER}"
+    // Point this to your Java 17 installation path
+    JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
+    PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+
+    AWS_REGION = 'us-east-1' 
+    IMAGE_NAME = 'hello-service'
+    IMAGE_TAG  = "${env.BUILD_NUMBER}"
     }
 
     // REMOVED the 'tools' block to avoid naming conflicts. 
