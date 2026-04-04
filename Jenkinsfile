@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        // Updated to us-east-1 as per our successful deployment
-        AWS_REGION = 'us-east-1' 
+        // Updated to ap-south-1 as per our successful deployment
+        AWS_REGION = 'ap-south-1' 
         IMAGE_NAME = 'hello-service'
         IMAGE_TAG  = "${env.BUILD_NUMBER}"
         // Replace with your actual ECR Registry URI (e.g., 971201280747.dkr.ecr.us-east-1.amazonaws.com)
